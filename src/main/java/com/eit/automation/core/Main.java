@@ -12,6 +12,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilenameFilter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,22 +50,46 @@ public class Main {
             // -----------------------------------------------------------------
             config = new Properties();
 
-            // Step 1A: Load base secrets file if present (Git-Ignored / Local / Server)
-            File secretFile = new File("secret.properties");
-            if (!secretFile.exists()) {
-                secretFile = new File("secrets.properties"); // Fallback check
+            // Step 1A: Auto-discover any file matching *_secret.properties dynamically in the workspace root
+            File rootDir = new File(".");
+            File[] secretFiles = rootDir.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    return name.toLowerCase().endsWith("_secret.properties");
+                }
+            });
+
+            boolean secretLoaded = false;
+            if (secretFiles != null && secretFiles.length > 0) {
+                File targetSecretFile = secretFiles[0];
+                System.out.println("🔒 Auto-Discovered Secret Properties: " + targetSecretFile.getAbsolutePath());
+                try (FileInputStream secretFis = new FileInputStream(targetSecretFile)) {
+                    config.load(secretFis);
+                    secretLoaded = true;
+                    System.out.println("✅ Branch-specific secret properties successfully loaded.");
+                } catch (Exception e) {
+                    System.err.println("⚠️ Warning: Failed to load discovered secret properties file: " + e.getMessage());
+                }
             }
 
-            if (secretFile.exists()) {
-                System.out.println("🔒 Loading Secret Properties from: " + secretFile.getAbsolutePath());
-                try (FileInputStream secretFis = new FileInputStream(secretFile)) {
-                    config.load(secretFis);
-                    System.out.println("✅ Secret properties successfully loaded.");
-                } catch (Exception e) {
-                    System.err.println("⚠️ Warning: Failed to load secret properties file: " + e.getMessage());
+            // Fallback check to standard secret.properties or secrets.properties if no *_secret.properties exists
+            if (!secretLoaded) {
+                File secretFile = new File("secret.properties");
+                if (!secretFile.exists()) {
+                    secretFile = new File("secrets.properties"); // Fallback check
                 }
-            } else {
-                System.out.println("ℹ️ No local secret.properties file found. Proceeding with configuration file and system environment variables.");
+
+                if (secretFile.exists()) {
+                    System.out.println("🔒 Loading Secret Properties from: " + secretFile.getAbsolutePath());
+                    try (FileInputStream secretFis = new FileInputStream(secretFile)) {
+                        config.load(secretFis);
+                        System.out.println("✅ Secret properties successfully loaded.");
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Warning: Failed to load secret properties file: " + e.getMessage());
+                    }
+                } else {
+                    System.out.println("ℹ️ No local secret.properties file found. Proceeding with configuration file and system environment variables.");
+                }
             }
 
             // Step 1B: Load specific Epic / Environment configuration file

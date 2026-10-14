@@ -16,4 +16,4 @@ test-reports/
 # Secret environment properties
 secret.properties
 secrets.properties
-*.secret.properties
+*_secret.properties
