@@ -10,7 +10,7 @@ public class TestERPApiClient {
 
     public static void main(String[] args) {
         Properties config = new Properties();
-        String configPath = "EPIC_0001_Platform_Configuration.properties";
+        String configPath = "WE1_EPIC_0001_Platform_Configuration.properties";
 
         // 1. Load config properties
         try (InputStream input = new FileInputStream(configPath)) {
